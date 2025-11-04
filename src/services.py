@@ -1,85 +1,94 @@
 import json
 import datetime
-import logging
 from typing import List, Dict, Any
+from itertools import groupby
+from collections import defaultdict
+import pandas as pd
+import logging
 
-# Включим логирование
 logger = logging.getLogger(__name__)
 
 
-def analyze_profitable_categories(data: List[Dict[str, Any]], year: int, month: int) -> str:
-    from functools import reduce
-    # Фильтруем транзакции по году и месяцу
-    def is_in_month(tx):
-        tx_date = datetime.datetime.strptime(tx["date"], "%Y-%m-%d")
-        return tx_date.year == year and tx_date.month == month
+def analyze_profitable_categories(data: pd.DataFrame, year: int, month: int) -> str:
+    """
+    Анализирует наиболее выгодные категории кешбэка за указанный месяц и год.
+    Возвращает JSON строку с суммами по категориям.
+    """
 
-    filtered = list(filter(is_in_month, data))
+    # Преобразует значение 'date' из строки в объект datetime.
+    # Проверяет, относится ли эта дата к указанному году (year) и месяцу (month).
+    # Возвращает True, если дата в нужном месяце, иначе — False.
+    # Чтобы фильтровать только те транзакции, которые произошли именно в выбранном месяце.
+    def is_in_month(row):
+        date = pd.to_datetime(row['date'])
+        return date.year == year and date.month == month
 
-    # Группируем по категориям и считаем сумму кешбэка
-    def reducer(acc, tx):
-        category = tx.get("category", "Не определена")
-        amount = tx.get("amount", 0)
-        # Кешбэк 1% от суммы
-        cashback = abs(amount) * 0.01
-        acc[category] = acc.get(category, 0) + cashback
-        return acc
+    # Создание отфильтрованных данных
+    filtered_data = list(
+        map(lambda row: row, filter(is_in_month, data.itertuples(index=False)))
+    )
 
-    result_dict = reduce(reducer, filtered, {})
+    # Исключить переводы и категории в иностранных валютах
+    # Предположим, что переводы по категории 'Перевод' или похожие не влучают
+    def is_valid_category(row):
+        categoria = getattr(row, 'category', '')
+        currency = getattr(row, 'currency', 'RUB')
+        return (
+                categoria.lower() != 'перевод' and
+                currency in ['RUB', 'EUR', 'TRY']
+        )
 
-    # Возращаем JSON
-    json_result = json.dumps(result_dict, ensure_ascii=False)
-    logger.info("Анализ выгодных категорий завершен")
-    return json_result
+    valid_transactions = list(filter(is_valid_category, filtered_data))
+
+    # Группировка по категориям и подсчет суммы кешбэка
+    #Создаем словарь category_bonuses, где ключ — категория, значение — сумма кешбэка за все транзакции в этой категории.
+    # Для каждой транзакции: извлекаем сумму кешбэка (cashback), если нет — по умолчанию 0;
+    # извлекаем название категории (category), если нет — "Неизвестная";
+    # добавляем кешбэк в сумму по этой категории.
+    category_bonuses = defaultdict(float)
+
+    for row in valid_transactions:
+        cashback = getattr(row, 'cashback', 0)
+        category = getattr(row, 'category', 'Неизвестная')
+        category_bonuses[category] += cashback
+
+    # словарь из подсчитанных сумм по категориям
+    result_json = json.dumps({k: v for k, v in category_bonuses.items()}, ensure_ascii=False)
+    return result_json
 
 
 def investment_bank(month: str, transactions: List[Dict[str, Any]], limit: int) -> float:
     """
-    Расчет суммы, которая может быть отложена в "Инвесткопилку", на основе округлений покупок.
-
-    :param month: строка формата 'YYYY-MM'
-    :param transactions: список транзакций с полями 'date' и 'amount'
-    :param limit: порог округления
-    :return: сумма, которая может быть отложена
+    Рассчитывает сумму, которую можно отложить в инвестиционный фонд, округляя операции до лимита.
     """
-    from functools import reduce
+    # Преобразуем месяц в год и месяц
+    year_month = datetime.datetime.strptime(month, "%Y-%m")
+    year = year_month.year
+    month_num = year_month.month
 
-    # Парсим месяц
-    target_year, target_month = map(int, month.split('-'))
+    # Фильтр транзакций на месяц и валидных условий
+    def is_in_month(transaction):
+        t_date_str = transaction.get('Дата операции')
+        try:
+            t_date = datetime.datetime.strptime(t_date_str, "%Y-%m-%d")
+        except Exception as e:
+            logger.warning(f"Некорректная дата: {t_date_str} — {e}")
+            return False
+        return t_date.year == year and t_date.month == month_num and transaction.get('Статус') == 'OK'
 
-    # Фильтруем транзакции по месяцу
-    filtered_tx = list(filter(lambda tx:
-                              datetime.datetime.strptime(tx['date'], "%Y-%m-%d").year == target_year and
-                              datetime.datetime.strptime(tx['date'], "%Y-%m-%d").month == target_month,
-                              transactions
-                              ))
+    month_transactions = list(filter(is_in_month, transactions))
 
-    def accumulate_rounding(total, tx):
-        amount = abs(tx['amount'])
-        # Округляем сумму
-        rounded = ((amount + limit - 1) // limit) * limit
+    # Вычисление округленной суммы и накопленной разницы
+    def transaction_rounding(trans):
+        amount = trans.get('Сумма операции', 0)
+        # Округляем сумму до ближайшего лимита
+        rounded = int(round(amount / limit) * limit)
         difference = rounded - amount
-        return total + difference
+        return max(difference, 0)  # только отрицательные значения (деньги в копилке)
 
-    total_savings = reduce(accumulate_rounding, filtered_tx, 0.0)
-    # Округляем до 2 знаков
-    total_savings = round(total_savings, 2)
-    logging.info(f"В копилку за {month} удалось собрать {total_savings} ₽")
+    # Используя map для получения разниц
+    total_savings = sum(
+        map(lambda t: transaction_rounding(t), month_transactions)
+    )
+
     return total_savings
-
-if __name__ == "__main__":
-    # Пример для проверки analyze_profitable_categories
-    data = [
-        {"date": "2023-08-05", "amount": 1000, "category": "Развлечения"},
-        {"date": "2023-08-15", "amount": 2000, "category": "Гаджеты"},
-        {"date": "2023-07-20", "amount": 1500, "category": "Путешествия"},
-        {"date": "2023-08-10", "amount": 3000, "category": "Развлечения"}
-    ]
-    print(analyze_profitable_categories(data, 2023, 8))
-    # Проверка investment_bank
-    transactions = [
-        {"date": "2023-08-01", "amount": 1712},
-        {"date": "2023-08-10", "amount": 500},
-        {"date": "2023-08-15", "amount": 1050}
-    ]
-    print(investment_bank("2023-08", transactions, 50))
