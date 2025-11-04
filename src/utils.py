@@ -1,26 +1,35 @@
 import json
+import os
+
 import requests
 import datetime
 import pandas as pd
+from typing import Optional
+from dotenv import load_dotenv
+from pathlib import Path
+
+BASEDIR = Path(__file__).resolve().parent.parent
 
 # API URL для получения курсов валют (или для конвертации)
 CURRENCY_API_URL = "https://api.apilayer.com/exchangerates_data/latest"
 # URL для конвертации валют
 CONVERT_API_URL = "https://api.apilayer.com/exchangerates_data/convert"
-STOCK_API_URL = "https://finnhub.io/api/v1/quote?symbol={}"
-API_TOKEN_STOCKS = "P9scVvXKu3F1SdIqsS0nKYndV8xBvxbC"
 
-def get_greeting(dt_str):
+
+
+def get_greeting(dt_str: str) -> str:
+    """ Принимает строку даты (%Y-%m-%d %H:%M:%S) и в зависимости от времени суток передает приветствие"""
     dt = datetime.datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
     hour = dt.hour
     if 5 <= hour < 12:
-        return "Доброе утро"
+        message = "Доброе утро"
     elif 12 <= hour < 17:
-        return "Добрый день"
+        message = "Добрый день"
     elif 17 <= hour < 22:
-        return "Добрый вечер"
+        message = "Добрый вечер"
     else:
-        return "Доброй ночи"
+        message = "Доброй ночи"
+    return message
 
 def load_user_settings(filepath='user_settings.json'):
     with open(filepath, 'r', encoding='utf-8') as f:
@@ -70,63 +79,76 @@ def get_top_transactions(transactions, count=5):
     top = df_sorted.head(count)
     return top.to_dict(orient='records')
 
-def get_currency_rates():
-    try:
-        response = requests.get(CURRENCY_API_URL, headers={
-            "apikey": "P9scVvXKu3F1SdIqsS0nKYndV8xBvxbC"  # API ключ
-        })
-        response.raise_for_status()
-        data = response.json()
-        rates = []
-        for curr in ["USD", "EUR"]:
-            rate = data['rates'].get(curr)
-            if rate:
-                rates.append({"currency": curr, "rate": rate})
-        return rates
-    except Exception as e:
-        print(f"Ошибка получения курсов валют: {e}")
-        return []
 
-def get_conversion_rate(from_currency, to_currency, amount):
+def get_conversion_rate(from_currency: str, to_currency: str, amount: str) -> Optional[float]:
+    """
+    Получает стоимость валюты
+    :param from_currency: конвертируемая валюта
+    :param to_currency: результат конвертации
+    :param amount: сумма конвертируемой валюты
+    :return: результат конвертации
+    """
+    load_dotenv(BASEDIR/'.env')
+    apikey = os.getenv('API_TOKEN_STOCKS')
     url = f"{CONVERT_API_URL}?from={from_currency}&to={to_currency}&amount={amount}"
     headers= {
-        "apikey": "P9scVvXKu3F1SdIqsS0nKYndV8xBvxbC"
+        "apikey": apikey
     }
     response = requests.get(url, headers=headers)
     if response.status_code == 200:
         data = response.json()
-        return data.get("result")
+        rate = data.get("result")
+        result = round(float(rate), 2)
+        return result
     else:
         print(f"Ошибка при получении данных: {response.status_code} {response.text}")
         return None
 
-def get_stock_prices():
-    stocks = ["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"]
-    prices = []
+
+def get_currency_rates(curr_list: list[str]) -> list[dict]:
+    """
+    Получения курса валюта
+    :param curr_list: список валют
+    :return: результат словарь с курсом валют. Шаблон: [{"currency": ..., "rate": ...},...]
+    """
+    rates = []
+    for curr in curr_list:
+        rate = get_conversion_rate(from_currency=curr, to_currency='RUB', amount='1')
+        if rate:
+            rates.append({"currency": curr, "rate": rate})
+    return rates
+
+
+def get_stock_prices(stock: str) -> Optional[float]:
+    load_dotenv(BASEDIR / '.env')
+    apikey = os.getenv('API_TOKEN_TWELVEDATA')
+    url = f"https://api.twelvedata.com/price?symbol={stock}&apikey={apikey}"
+    response = requests.get(url)
+    if response.status_code == 200:
+        data = response.json()
+        rate = data.get("price")
+        result = round(float(rate), 2)
+        return result
+    else:
+        print(f"Ошибка при получении данных: {response.status_code} {response.text}")
+        return None
+    # stocks = ["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"]
+
+
+def get_stock_rate_list(stocks: list) -> list[dict]:
+    rates = []
     for stock in stocks:
-        try:
-            url = STOCK_API_URL.format(stock)
-            response = requests.get(url, params={'token': API_TOKEN_STOCKS})
-            response.raise_for_status()
-            data = response.json()
-            price = data.get('c')  # текущая цена
-            if price:
-                prices.append({"stock": stock, "price": price})
-        except Exception as e:
-            print(f"Ошибка при получении цены {stock}: {e}")
-    return prices
+        price = get_stock_prices(stock)
+        if price:
+            rates.append({"stock": stock, "price": price})
+    return rates
+
+
 
 # Пример использования функций
 if __name__ == "__main__":
-    # Получение текущих курсов валют
-    rates = get_currency_rates()
-    print("Курсы валют:", rates)
-
-    # Конвертация 100 USD в EUR
-    converted_amount = get_conversion_rate("USD", "EUR", 100)
-    if converted_amount:
-        print(f"100 USD равно {converted_amount} EUR")
-
-    # Получение цен акций
-    stock_prices = get_stock_prices()
-    print("Цены акций:", stock_prices)
+    # print(get_greeting('2025-07-24 15:00:00'))
+    # print(get_conversion_rate('USD', 'RUB', '1'))
+    # print(get_currency_rates(['USD', 'EUR']))
+    # print(get_stock_prices("GOOGL"))
+    # print(get_stock_rate_list(["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"]))
