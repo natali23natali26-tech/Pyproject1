@@ -6,6 +6,8 @@ from typing import Optional
 from dotenv import load_dotenv
 from pathlib import Path
 
+from pandas import DataFrame
+
 BASEDIR = Path(__file__).resolve().parent.parent
 
 # API URL для получения курсов валют (или для конвертации)
@@ -14,9 +16,12 @@ CURRENCY_API_URL = "https://api.apilayer.com/exchangerates_data/latest"
 CONVERT_API_URL = "https://api.apilayer.com/exchangerates_data/convert"
 
 
-
 def get_greeting(dt_str: str) -> str:
-    """ Принимает строку даты (%Y-%m-%d %H:%M:%S) и в зависимости от времени суток передает приветствие"""
+    """
+    Принимает строку даты (%Y-%m-%d %H:%M:%S) и в зависимости от времени суток передает приветствие
+    :param dt_str: дата
+    :return: приветствие
+    """
     dt = datetime.datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
     hour = dt.hour
     if 5 <= hour < 12:
@@ -29,18 +34,23 @@ def get_greeting(dt_str: str) -> str:
         message = "Доброй ночи"
     return message
 
-# def load_user_settings(filepath='user_settings.json'):
-#     with open(filepath, 'r', encoding='utf-8') as f:
-#         settings = json.load(f)
-#     return settings
 
-def read_transactions_from_excel(excel_path):
+def read_transactions_from_excel(excel_path: str) -> list[dict]:
     """
-    Считывает финансовые операции из Excel-файла.
-    Args:
-        excel_path (str): Путь к Excel-файлу.
-    Returns:
-        list: Список словарей с транзакциями.
+    Считывает транзакции из Excel-файла и возвращает их в виде списка словарей.
+
+    Функция загружает данные с первого листа файла, преобразует каждую строку
+    в словарь, где ключи — названия столбцов (например, «Дата платежа», «Сумма платежа» и т.д.).
+
+    :param excel_path: Путь к Excel-файлу (формат .xlsx или .xls).
+    :type excel_path: str
+    :return: Список словарей, представляющих транзакции.
+             Каждый словарь соответствует одной строке в таблице.
+             В случае ошибки возвращается пустой список.
+    :rtype: List[Dict[str, Any]]
+
+    :raises FileNotFoundError: Если файл по указанному пути не найден.
+    :raises Exception: Если произошла ошибка при чтении файла (некорректный формат и т.п.).
     """
     try:
         df = pd.read_excel(excel_path)  # Читаем данные из Excel файла в DataFrame
@@ -54,8 +64,6 @@ def read_transactions_from_excel(excel_path):
         return []
 
 
-
-
 def get_conversion_rate(from_currency: str, to_currency: str, amount: str) -> Optional[float]:
     """
     Получает стоимость валюты
@@ -64,10 +72,10 @@ def get_conversion_rate(from_currency: str, to_currency: str, amount: str) -> Op
     :param amount: сумма конвертируемой валюты
     :return: результат конвертации
     """
-    load_dotenv(BASEDIR/'.env')
+    load_dotenv(BASEDIR / '.env')
     apikey = os.getenv('API_TOKEN_STOCKS')
     url = f"{CONVERT_API_URL}?from={from_currency}&to={to_currency}&amount={amount}"
-    headers= {
+    headers = {
         "apikey": apikey
     }
     response = requests.get(url, headers=headers)
@@ -96,6 +104,9 @@ def get_currency_rates(curr_list: list[str]) -> list[dict]:
 
 
 def get_stock_prices(stock: str) -> Optional[float]:
+    """
+    Получает текущую цену одной акции через API Twelvedata
+    """
     load_dotenv(BASEDIR / '.env')
     apikey = os.getenv('API_TOKEN_TWELVEDATA')
     url = f"https://api.twelvedata.com/price?symbol={stock}&apikey={apikey}"
@@ -112,6 +123,10 @@ def get_stock_prices(stock: str) -> Optional[float]:
 
 
 def get_stock_rate_list(stocks: list) -> list[dict]:
+    """
+    Формирует список словарей с названием акции и ценой на нее
+    :param stocks: идентификатор актива
+    """
     rates = []
     for stock in stocks:
         price = get_stock_prices(stock)
@@ -119,15 +134,63 @@ def get_stock_rate_list(stocks: list) -> list[dict]:
             rates.append({"stock": stock, "price": price})
     return rates
 
-def filter_transactions(transactions):
+
+def filter_transactions(transactions: list[dict]) -> DataFrame:
+    """
+    Фильтрует транзакции, оставляя только расходы по заданным критериям.
+
+    Отбирает транзакции, которые:
+    - являются расходами (сумма платежа < 0);
+    - не относятся к категориям «Наличные» и «Переводы»;
+    - имеют заполненную (не NaN) категорию.
+
+    :param transactions: Список словарей с данными о транзакциях.
+                         Каждый словарь должен содержать:
+                         - "Сумма платежа" (float/int): сумма операции;
+                         - "Категория" (str или NaN): категория транзакции.
+    :type transactions: List[Dict[str, Any]]
+    :return: DataFrame с отфильтрованными транзакциями.
+    :rtype: pandas.DataFrame
+
+    Пример входных данных:
+    [
+        {
+            "Дата платежа": "2023-10-01",
+            "Сумма платежа": -1500.0,
+            "Категория": "Еда",
+            "Описание": "Обед"
+        },
+        ...
+    ]
+    """
     df = pd.DataFrame(transactions)
-    df_filter = df[(df["Сумма платежа"] < 0) & (~df["Категория"].isin(['Наличные', 'Переводы'])) & (df["Категория"].notna())]
+    df_filter = df[
+        (df["Сумма платежа"] < 0) & (~df["Категория"].isin(['Наличные', 'Переводы'])) & (df["Категория"].notna())]
     return df_filter
 
-def get_card_summary(df) -> list[dict]:
+
+def get_card_summary(df: DataFrame) -> list[dict]:
+    """
+   Формирует сводную статистику по банковским картам на основе транзакций.
+
+    Для каждой уникальной карты вычисляет:
+    - последние 4 цифры номера карты;
+    - общую сумму расходов (по модулю, чтобы учесть отрицательные значения);
+    - кэшбэк в размере 1% от суммы трат, округлённый до 2 знаков.
+
+    :param df: DataFrame с транзакциями. Должен содержать столбцы:
+               - "Номер карты" (str): полный номер карты;
+               - "Сумма платежа" (float/int): сумма операции (отрицательная — расход).
+    :type df: pandas.DataFrame
+    :return: Список словарей с информацией по каждой карте. Каждый словарь содержит:
+             - "last_digits" (str): последние 4 цифры номера карты;
+             - "total_spent" (float): общая сумма трат (модуль);
+             - "cashback" (float): начисленный кэшбэк (1% от total_spent).
+    :rtype: List[Dict[str, object]]
+    """
     cards = []
     group = df.groupby("Номер карты").agg({'Сумма платежа': 'sum'})
-    cards_dict = group.to_dict(orient = 'index')
+    cards_dict = group.to_dict(orient='index')
     for key, value in cards_dict.items():
         last_digits = key[-4:]
         total_spent = abs(value['Сумма платежа'])
@@ -141,7 +204,23 @@ def get_card_summary(df) -> list[dict]:
     return cards
 
 
-def get_top_transactions(df, count=5):
+def get_top_transactions(df: DataFrame, count: int = 5) -> list[dict]:
+    """
+    Возвращает список словарей с топ транзакциями с наибольшей суммой платежа по убыванию
+    :param df: DataFrame с транзакциями. Должен содержать столбцы:
+               - "Сумма платежа" (float/int): сумма транзакции (отрицательная — расход);
+               - "Дата платежа" (datetime): дата операции;
+               - "Категория" (str): категория траты;
+               - "Описание" (str): описание транзакции.
+    :param count: Количество транзакций для возврата (по умолчанию 5).
+    :type count: int
+    :return: Список словарей с информацией о транзакциях, отсортированных по сумме.
+             Каждый словарь содержит:
+             - "date" (datetime): дата платежа;
+             - "amount" (float): сумма платежа (по модулю);
+             - "category" (str): категория;
+             - "description" (str): описание.
+    """
     top_list = []
     df_sorted = df.sort_values(by='Сумма платежа', ascending=True)
     top = df_sorted.head(count)
@@ -151,7 +230,7 @@ def get_top_transactions(df, count=5):
         amount = abs(trancas['Сумма платежа'])
         category = trancas['Категория']
         description = trancas['Описание']
-        transaction ={
+        transaction = {
             "date": date,
             "amount": amount,
             "category": category,
@@ -160,16 +239,15 @@ def get_top_transactions(df, count=5):
         top_list.append(transaction)
     return top_list
 
-
 # Пример использования функций
-if __name__ == "__main__":
-    transactions = read_transactions_from_excel('../data/operations.xlsx')
-    df = filter_transactions(transactions)
-    print(get_top_transactions(df))
-    # print(transactions)
-    # print(get_card_summary(df))
-    # print(get_greeting('2025-07-24 15:00:00'))
-    # print(get_conversion_rate('USD', 'RUB', '1'))
-    # print(get_currency_rates(['USD', 'EUR']))
-    # print(get_stock_prices("GOOGL"))
-    # print(get_stock_rate_list(["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"]))
+# if __name__ == "__main__":
+#     transactions = read_transactions_from_excel('../data/operations.xlsx')
+#     df = filter_transactions(transactions)
+#     print(get_top_transactions(df))
+# print(transactions)
+# print(get_card_summary(df))
+# print(get_greeting('2025-07-24 15:00:00'))
+# print(get_conversion_rate('USD', 'RUB', '1'))
+# print(get_currency_rates(['USD', 'EUR']))
+# print(get_stock_prices("GOOGL"))
+# print(get_stock_rate_list(["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"]))
