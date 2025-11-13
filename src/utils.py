@@ -74,7 +74,9 @@ def read_transactions_from_excel(excel_path: str) -> list[dict]:
         return []
 
 
-def get_conversion_rate(from_currency: str, to_currency: str, amount: str) -> Optional[float]:
+def get_conversion_rate(from_currency: str,
+                        to_currency: str,
+                        amount: str) -> Optional[float]:
     """
     Получает стоимость валюты
     :param from_currency: конвертируемая валюта
@@ -84,7 +86,9 @@ def get_conversion_rate(from_currency: str, to_currency: str, amount: str) -> Op
     """
     load_dotenv(BASEDIR / '.env')
     apikey = os.getenv('API_TOKEN_STOCKS')
-    url = f"{CONVERT_API_URL}?from={from_currency}&to={to_currency}&amount={amount}"
+    url = (f"{CONVERT_API_URL}"
+           f"?from={from_currency}"
+           f"&to={to_currency}&amount={amount}")
     headers = {
         "apikey": apikey
     }
@@ -95,7 +99,9 @@ def get_conversion_rate(from_currency: str, to_currency: str, amount: str) -> Op
         result = round(float(rate), 2)
         return result
     else:
-        print(f"Ошибка при получении данных: {response.status_code} {response.text}")
+        print(
+            f"Ошибка при получении данных:"
+            f" {response.status_code} {response.text}")
         return None
 
 
@@ -103,11 +109,12 @@ def get_currency_rates(curr_list: list[str]) -> list[dict]:
     """
     Получения курса валюта
     :param curr_list: список валют
-    :return: результат словарь с курсом валют. Шаблон: [{"currency": ..., "rate": ...},...]
+    :return: результат словарь с курсом валют.
     """
     rates = []
     for curr in curr_list:
-        rate = get_conversion_rate(from_currency=curr, to_currency='RUB', amount='1')
+        rate = get_conversion_rate(
+            from_currency=curr, to_currency='RUB', amount='1')
         if rate:
             rates.append({"currency": curr, "rate": rate})
     return rates
@@ -127,7 +134,9 @@ def get_stock_prices(stock: str) -> Optional[float]:
         result = round(float(rate), 2)
         return result
     else:
-        print(f"Ошибка при получении данных: {response.status_code} {response.text}")
+        print(
+            f"Ошибка при получении данных:"
+            f" {response.status_code} {response.text}")
         return None
     # stocks = ["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"]
 
@@ -172,7 +181,9 @@ def filter_transactions(transactions: list[dict]) -> DataFrame:
     """
     df = pd.DataFrame(transactions)
     df_filter = df[
-        (df["Сумма платежа"] < 0) & (~df["Категория"].isin(['Наличные', 'Переводы'])) & (df["Категория"].notna())]
+        (df["Сумма платежа"] < 0)
+        & (~df["Категория"].isin(['Наличные', 'Переводы']))
+        & (df["Категория"].notna())]
     return df_filter
 
 
@@ -187,9 +198,10 @@ def get_card_summary(df: DataFrame) -> list[dict]:
 
     :param df: DataFrame с транзакциями. Должен содержать столбцы:
                - "Номер карты" (str): полный номер карты;
-               - "Сумма платежа" (float/int): сумма операции (отрицательная — расход).
+               - "Сумма платежа" (float/int): сумма операции.
     :type df: pandas.DataFrame
-    :return: Список словарей с информацией по каждой карте. Каждый словарь содержит:
+    :return: Список словарей с информацией по каждой карте.
+    Каждый словарь содержит:
              - "last_digits" (str): последние 4 цифры номера карты;
              - "total_spent" (float): общая сумма трат (модуль);
              - "cashback" (float): начисленный кэшбэк (1% от total_spent).
@@ -213,15 +225,17 @@ def get_card_summary(df: DataFrame) -> list[dict]:
 
 def get_top_transactions(df: DataFrame, count: int = 5) -> list[dict]:
     """
-    Возвращает список словарей с топ транзакциями с наибольшей суммой платежа по убыванию
+    Возвращает список словарей с топ транзакциями
+     с наибольшей суммой платежа по убыванию
     :param df: DataFrame с транзакциями. Должен содержать столбцы:
-               - "Сумма платежа" (float/int): сумма транзакции (отрицательная — расход);
+               - "Сумма платежа" (float/int): сумма транзакции;
                - "Дата платежа" (datetime): дата операции;
                - "Категория" (str): категория траты;
                - "Описание" (str): описание транзакции.
     :param count: Количество транзакций для возврата (по умолчанию 5).
     :type count: int
-    :return: Список словарей с информацией о транзакциях, отсортированных по сумме.
+    :return: Список словарей с информацией о транзакциях,
+     отсортированных по сумме.
              Каждый словарь содержит:
              - "date" (datetime): дата платежа;
              - "amount" (float): сумма платежа (по модулю);

@@ -1,8 +1,11 @@
-import json
 from pathlib import Path
 from datetime import datetime
-from utils import get_greeting, get_currency_rates, get_stock_rate_list, read_transactions_from_excel, get_card_summary, \
-    get_top_transactions, filter_transactions
+from utils import (get_greeting, get_currency_rates,
+                   get_stock_rate_list,
+                   read_transactions_from_excel,
+                   get_card_summary,
+                   get_top_transactions,
+                   filter_transactions)
 
 CURRENCY_LIST = ['USD', 'EUR']
 STOCK_LIST = ["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"]
@@ -27,6 +30,7 @@ def this_home():
         "stock_prices": stock_prices
     }
     return result
+
 
 # def main_page_data(datetime_str):
 #     # Получить приветствие
@@ -85,6 +89,5 @@ def this_home():
 #     }
 #
 #     return json.dumps(response, ensure_ascii=False)
-
 if __name__ == '__main__':
     print(this_home())

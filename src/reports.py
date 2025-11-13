@@ -1,6 +1,5 @@
 import pandas as pd
 import json
-import os
 import datetime
 from functools import wraps
 import logging
@@ -13,6 +12,7 @@ handler = logging.FileHandler('reports.log')
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
+
 
 # Декоратор без параметров: сохраняет в файл с названием по умолчанию
 def report_to_file_default(func):
@@ -28,6 +28,7 @@ def report_to_file_default(func):
             logger.error(f"Ошибка при сохранении файла {filename}: {e}")
         return result
     return wrapper
+
 
 # Декоратор с параметром: принимает имя файла
 def report_to_file(filename):
@@ -45,6 +46,7 @@ def report_to_file(filename):
         return wrapper
     return decorator
 
+
 @report_to_file_default
 def spending_by_category(
     transactions: pd.DataFrame,
@@ -52,7 +54,8 @@ def spending_by_category(
     date: Optional[str] = None
 ) -> pd.DataFrame:
     """
-    Возвращает траты по заданной категории за последние 3 месяца от указанной даты.
+    Возвращает траты по заданной категории
+     за последние 3 месяца от указанной даты.
     Если дата не передана, используется текущая дата.
     """
     # Если дата не указана, берем текущую
@@ -64,12 +67,16 @@ def spending_by_category(
     start_date_dt = end_date_dt - datetime.timedelta(days=90)
 
     # Фильтрация по дате и категории
-    # Предполагается, что в транзакциях есть колонка 'date' в формате "%Y-%m-%d"
-    mask_date = (transactions['date'] >= start_date_dt.strftime("%Y-%m-%d")) & \
-                (transactions['date'] <= end_date_dt.strftime("%Y-%m-%d"))
+    # Предполагается, что в транзакциях
+    # есть колонка 'date' в формате "%Y-%m-%d"
+    mask_date = (transactions['date']
+                 >= start_date_dt.strftime("%Y-%m-%d")) & \
+                (transactions['date']
+                 <= end_date_dt.strftime("%Y-%m-%d"))
     mask_category = transactions['category'] == category
     filtered = transactions[mask_date & mask_category]
 
     # Можно сгруппировать и посчитать сумму, если нужно.
-    # Но по ТЗ функция возвращает DataFrame с транзакциями по категории за период
+    # Но по ТЗ функция возвращает DataFrame
+    # с транзакциями по категории за период
     return filtered
