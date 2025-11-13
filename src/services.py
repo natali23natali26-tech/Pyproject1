@@ -290,3 +290,9 @@ def search_person_transfers() -> str:
 # Пример использования find_person_transfers
 # if __name__ == "__main__":
 #     print(search_person_transfers())
+
+# Пример использования search_person_transfers
+# if __name__ == "__main__":
+#     result_json = search_person_transfers()
+#     print(result_json)
+
