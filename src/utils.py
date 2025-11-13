@@ -18,7 +18,8 @@ CONVERT_API_URL = "https://api.apilayer.com/exchangerates_data/convert"
 
 def get_greeting(dt_str: str) -> str:
     """
-    Принимает строку даты (%Y-%m-%d %H:%M:%S) и в зависимости от времени суток передает приветствие
+    Принимает строку даты (%Y-%m-%d %H:%M:%S)
+    и в зависимости от времени суток передает приветствие
     :param dt_str: дата
     :return: приветствие
     """
@@ -37,10 +38,13 @@ def get_greeting(dt_str: str) -> str:
 
 def read_transactions_from_excel(excel_path: str) -> list[dict]:
     """
-    Считывает транзакции из Excel-файла и возвращает их в виде списка словарей.
+    Считывает транзакции из Excel-файла и
+    возвращает их в виде списка словарей.
 
-    Функция загружает данные с первого листа файла, преобразует каждую строку
-    в словарь, где ключи — названия столбцов (например, «Дата платежа», «Сумма платежа» и т.д.).
+    Функция загружает данные с первого листа файла,
+     преобразует каждую строку
+    в словарь, где ключи — названия столбцов
+    (например, «Дата платежа», «Сумма платежа» и т.д.).
 
     :param excel_path: Путь к Excel-файлу (формат .xlsx или .xls).
     :type excel_path: str
@@ -49,18 +53,24 @@ def read_transactions_from_excel(excel_path: str) -> list[dict]:
              В случае ошибки возвращается пустой список.
     :rtype: List[Dict[str, Any]]
 
-    :raises FileNotFoundError: Если файл по указанному пути не найден.
-    :raises Exception: Если произошла ошибка при чтении файла (некорректный формат и т.п.).
+    :raises FileNotFoundError:
+    Если файл по указанному пути не найден.
+    :raises Exception:
+    Если произошла ошибка при чтении файла (некорректный формат и т.п.).
     """
     try:
-        df = pd.read_excel(excel_path)  # Читаем данные из Excel файла в DataFrame
-        transactions = df.to_dict(orient='records')  # Преобразуем DataFrame в список словарей
+        # Читаем данные из Excel файла в DataFrame
+        df = pd.read_excel(excel_path)
+        # Преобразуем DataFrame в список словарей
+        transactions = df.to_dict(orient='records')
         return transactions  # Возвращаем список транзакций
     except FileNotFoundError:
-        print(f"Ошибка: Файл не найден по пути {excel_path}")  # Обрабатываем ошибку, если файл не найден
+        # Обрабатываем ошибку, если файл не найден
+        print(f"Ошибка: Файл не найден по пути {excel_path}")
         return []
     except Exception as e:
-        print(f"Ошибка при чтении Excel-файла: {e}")  # Обрабатываем любые другие исключения
+        # Обрабатываем любые другие исключения
+        print(f"Ошибка при чтении Excel-файла: {e}")
         return []
 
 
@@ -145,9 +155,6 @@ def filter_transactions(transactions: list[dict]) -> DataFrame:
     - имеют заполненную (не NaN) категорию.
 
     :param transactions: Список словарей с данными о транзакциях.
-                         Каждый словарь должен содержать:
-                         - "Сумма платежа" (float/int): сумма операции;
-                         - "Категория" (str или NaN): категория транзакции.
     :type transactions: List[Dict[str, Any]]
     :return: DataFrame с отфильтрованными транзакциями.
     :rtype: pandas.DataFrame
