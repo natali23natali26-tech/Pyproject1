@@ -44,11 +44,6 @@ def analyze_cashback_by_category(
         f" {year}-{month:02d}, "
         f"количество транзакций: {len(data)}")
 
-    # Проверка диапазона года
-    if not 2018 <= year <= 2021:
-        logger.error(f"Год вне диапазона: {year}")
-        raise ValueError("Год должен быть в диапазоне с 2018 по 2021")
-
     # Проверка диапазона месяца
     if not 1 <= month <= 12:
         logger.error(f"Месяц вне диапазона: {month}")
@@ -295,4 +290,3 @@ def search_person_transfers() -> str:
 # if __name__ == "__main__":
 #     result_json = search_person_transfers()
 #     print(result_json)
-
