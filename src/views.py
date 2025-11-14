@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from datetime import datetime
 from utils import (get_greeting, get_currency_rates,
@@ -7,21 +8,42 @@ from utils import (get_greeting, get_currency_rates,
                    get_top_transactions,
                    filter_transactions)
 
+# Настраиваем логирование
+logger = logging.getLogger(__name__)
+
 CURRENCY_LIST = ['USD', 'EUR']
 STOCK_LIST = ["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"]
 BASEDIR = Path(__file__).resolve().parent.parent
 
 
 def this_home():
-    file_patch = str(BASEDIR/'data'/'operations.xlsx')
+    file_patch = str(BASEDIR / 'data' / 'operations.xlsx')
+    logger.info(f"Загрузка транзакций из файла: {file_patch}")
+
     transactions = read_transactions_from_excel(file_patch)
+    logger.info(f"Загружено {len(transactions)} транзакций")
+
     df = filter_transactions(transactions)
+    logger.info(f"Отфильтровано {len(df)} транзакций после применения фильтра")
+
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    logger.debug(f"Текущее время: {now}")
+
     greeting = get_greeting(now)
+    logger.info(f"Сгенерировано приветствие: {greeting}")
+
     currency_rates = get_currency_rates(CURRENCY_LIST)
+    logger.info(f"Получены курсы валют: {[r['currency'] for r in currency_rates]}")
+
     stock_prices = get_stock_rate_list(STOCK_LIST)
+    logger.info(f"Получены цены акций: {[s['stock'] for s in stock_prices]}")
+
     cards = get_card_summary(df)
+    logger.info(f"Сформирована сводка по {len(cards)} картам")
+
     top_transactions = get_top_transactions(df)
+    logger.info(f"Определено {len(top_transactions)} топ-транзакций")
+
     result = {
         "greeting": greeting,
         "cards": cards,
@@ -29,65 +51,10 @@ def this_home():
         "currency_rates": currency_rates,
         "stock_prices": stock_prices
     }
+    logger.info("Главная страница успешно сформирована")
+
     return result
 
-
-# def main_page_data(datetime_str):
-#     # Получить приветствие
-#     greeting = get_greeting(datetime_str)
-#
-#     # Определить период: с начала месяца по входящую дату
-#     date_obj = dt.strptime(datetime_str, "%Y-%m-%d %H:%M:%S")
-#     start_of_month = date_obj.replace(day=1)
-#     end_date = date_obj.strftime("%Y-%m-%d")
-#     start_date = start_of_month.strftime("%Y-%m-%d")
-#
-#     # Получить транзакции за период
-#     transactions = get_transactions_for_period(start_date, end_date)
-#
-#     # Обработка транзакций
-#     total_spent = sum(t['amount'] for t in transactions)
-#     cashback = total_spent / 100  # 1 рубль на 100 рублей
-#     top_transactions = get_top_transactions(transactions, 5)
-#
-#     # Извлечение последних 4 цифр карты
-#     # Предположим, что у нас есть список карт
-#     cards = [
-#         {"card_number": "1234567812345814"},
-#         {"card_number": "9876543298767512"}
-#     ]
-#     cards_data = []
-#     for card in cards:
-#         last_digits = card['card_number'][-4:]
-#         cards_data.append({
-#             "last_digits": last_digits,
-#             "total_spent": round(total_spent, 2),
-#             "cashback": round(cashback, 2)
-#         })
-#
-#
-#
-#
-#     # Загружаем настройки пользователя
-#     settings = load_user_settings()
-#     user_currencies = settings.get('user_currencies', [])
-#     user_stocks = settings.get('user_stocks', [])
-#
-#     # Получаем курсы валют
-#     currency_rates = get_currency_rates()
-#
-#     # Получаем цены на акции
-#     stock_prices = get_stock_prices()
-#
-#     # Формируем ответ
-#     response = {
-#         "greeting": greeting,
-#         "cards": cards_data,
-#         "top_transactions": top_transactions,
-#         "currency_rates": currency_rates,
-#         "stock_prices": stock_prices
-#     }
-#
-#     return json.dumps(response, ensure_ascii=False)
+# Пример использования функции this_home
 if __name__ == '__main__':
     print(this_home())

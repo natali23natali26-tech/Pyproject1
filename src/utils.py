@@ -3,10 +3,15 @@ import requests
 import datetime
 import pandas as pd
 from typing import Optional
+import logging
 from dotenv import load_dotenv
 from pathlib import Path
 
 from pandas import DataFrame
+
+# Настройка логирования
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 BASEDIR = Path(__file__).resolve().parent.parent
 
@@ -47,31 +52,22 @@ def read_transactions_from_excel(excel_path: str) -> list[dict]:
     (например, «Дата платежа», «Сумма платежа» и т.д.).
 
     :param excel_path: Путь к Excel-файлу (формат .xlsx или .xls).
-    :type excel_path: str
-    :return: Список словарей, представляющих транзакции.
-             Каждый словарь соответствует одной строке в таблице.
-             В случае ошибки возвращается пустой список.
-    :rtype: List[Dict[str, Any]]
-
     :raises FileNotFoundError:
     Если файл по указанному пути не найден.
     :raises Exception:
     Если произошла ошибка при чтении файла (некорректный формат и т.п.).
     """
     try:
-        # Читаем данные из Excel файла в DataFrame
-        df = pd.read_excel(excel_path)
-        # Преобразуем DataFrame в список словарей
-        transactions = df.to_dict(orient='records')
-        return transactions  # Возвращаем список транзакций
+            df = pd.read_excel(excel_path)
+            transactions = df.to_dict(orient='records')
+            logger.info(f"Успешно загружено {len(transactions)} транзакций из {excel_path}")
+            return transactions
     except FileNotFoundError:
-        # Обрабатываем ошибку, если файл не найден
-        print(f"Ошибка: Файл не найден по пути {excel_path}")
-        return []
+            logger.error(f"Файл не найден: {excel_path}")
+            return []
     except Exception as e:
-        # Обрабатываем любые другие исключения
-        print(f"Ошибка при чтении Excel-файла: {e}")
-        return []
+            logger.error(f"Ошибка при чтении Excel-файла: {e}")
+            return []
 
 
 def get_conversion_rate(from_currency: str,
@@ -97,12 +93,13 @@ def get_conversion_rate(from_currency: str,
         data = response.json()
         rate = data.get("result")
         result = round(float(rate), 2)
+        logger.info(f"Успешная конвертация: {amount} {from_currency} → {result} {to_currency}")
         return result
     else:
-        print(
-            f"Ошибка при получении данных:"
-            f" {response.status_code} {response.text}")
-        return None
+        logger.error(
+            f"Ошибка при получении данных от API конвертации: "
+            f"статус {response.status_code}, ответ: {response.text}")
+        return None # ДОБАВЛЯЛА ЛОГИРОВАНИЕ ПРОВЕРЬ РАБОТУ
 
 
 def get_currency_rates(curr_list: list[str]) -> list[dict]:
@@ -132,12 +129,13 @@ def get_stock_prices(stock: str) -> Optional[float]:
         data = response.json()
         rate = data.get("price")
         result = round(float(rate), 2)
+        logger.info(f"Получена цена акции {stock}: {result} USD")
         return result
     else:
-        print(
-            f"Ошибка при получении данных:"
-            f" {response.status_code} {response.text}")
-        return None
+        logger.error(
+            f"Ошибка при получении данных о акции {stock}: "
+            f"статус {response.status_code}, ответ: {response.text}")
+        return None # ДОБАВЛЯЛА ЛОГИРОВАНИЕ ПРОВЕРЬ РАБОТУ
     # stocks = ["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"]
 
 
@@ -233,7 +231,6 @@ def get_top_transactions(df: DataFrame, count: int = 5) -> list[dict]:
                - "Категория" (str): категория траты;
                - "Описание" (str): описание транзакции.
     :param count: Количество транзакций для возврата (по умолчанию 5).
-    :type count: int
     :return: Список словарей с информацией о транзакциях,
      отсортированных по сумме.
              Каждый словарь содержит:
@@ -260,15 +257,40 @@ def get_top_transactions(df: DataFrame, count: int = 5) -> list[dict]:
         top_list.append(transaction)
     return top_list
 
-# Пример использования функций
+# Пример использования функции read_transactions_from_excel
+# if __name__ == "__main__":
+#     transactions = read_transactions_from_excel('../data/operations.xlsx')
+#     df = filter_transactions(transactions)
+
+# Пример использования функции get_top_transactions
 # if __name__ == "__main__":
 #     transactions = read_transactions_from_excel('../data/operations.xlsx')
 #     df = filter_transactions(transactions)
 #     print(get_top_transactions(df))
-# print(transactions)
-# print(get_card_summary(df))
-# print(get_greeting('2025-07-24 15:00:00'))
-# print(get_conversion_rate('USD', 'RUB', '1'))
-# print(get_currency_rates(['USD', 'EUR']))
-# print(get_stock_prices("GOOGL"))
-# print(get_stock_rate_list(["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"]))
+#     print(transactions)
+
+# Пример использования функции get_card_summary
+# if __name__ == "__main__":
+#     transactions = read_transactions_from_excel('../data/operations.xlsx')
+#     df = filter_transactions(transactions)
+#     print(get_card_summary(df))
+
+# Пример использования функции get_greeting
+# if __name__ == "__main__":
+#     print(get_greeting('2025-07-24 15:00:00'))
+
+# Пример использования функции get_conversion_rate
+# if __name__ == "__main__":
+#     print(get_conversion_rate('USD', 'RUB', '1'))
+
+# Пример использования функции get_currency_rates
+# if __name__ == "__main__":
+#     print(get_currency_rates(['USD', 'EUR']))
+
+# Пример использования функции get_stock_prices
+# if __name__ == "__main__":
+#     print(get_stock_prices("GOOGL"))
+
+# Пример использования функции get_stock_rate_list
+# if __name__ == "__main__":
+#     print(get_stock_rate_list(["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"]))
