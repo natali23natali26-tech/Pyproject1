@@ -33,16 +33,20 @@ def this_home():
     logger.info(f"Сгенерировано приветствие: {greeting}")
 
     currency_rates = get_currency_rates(CURRENCY_LIST)
-    logger.info(f"Получены курсы валют: {[r['currency'] for r in currency_rates]}")
+    logger.info(f"Получены курсы валют: "
+                f"{[r['currency'] for r in currency_rates]}")
 
     stock_prices = get_stock_rate_list(STOCK_LIST)
-    logger.info(f"Получены цены акций: {[s['stock'] for s in stock_prices]}")
+    logger.info(f"Получены цены акций: "
+                f"{[s['stock'] for s in stock_prices]}")
 
     cards = get_card_summary(df)
-    logger.info(f"Сформирована сводка по {len(cards)} картам")
+    logger.info(f"Сформирована сводка по "
+                f"{len(cards)} картам")
 
     top_transactions = get_top_transactions(df)
-    logger.info(f"Определено {len(top_transactions)} топ-транзакций")
+    logger.info(f"Определено "
+                f"{len(top_transactions)} топ-транзакций")
 
     result = {
         "greeting": greeting,
@@ -56,5 +60,5 @@ def this_home():
     return result
 
 # Пример использования функции this_home
-if __name__ == '__main__':
-    print(this_home())
+# if __name__ == '__main__':
+#     print(this_home())

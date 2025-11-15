@@ -58,16 +58,17 @@ def read_transactions_from_excel(excel_path: str) -> list[dict]:
     Если произошла ошибка при чтении файла (некорректный формат и т.п.).
     """
     try:
-            df = pd.read_excel(excel_path)
-            transactions = df.to_dict(orient='records')
-            logger.info(f"Успешно загружено {len(transactions)} транзакций из {excel_path}")
-            return transactions
+        df = pd.read_excel(excel_path)
+        transactions = df.to_dict(orient='records')
+        logger.info(f"Успешно загружено {len(transactions)}"
+                    f" транзакций из {excel_path}")
+        return transactions
     except FileNotFoundError:
-            logger.error(f"Файл не найден: {excel_path}")
-            return []
+        logger.error(f"Файл не найден: {excel_path}")
+        return []
     except Exception as e:
-            logger.error(f"Ошибка при чтении Excel-файла: {e}")
-            return []
+        logger.error(f"Ошибка при чтении Excel-файла: {e}")
+        return []
 
 
 def get_conversion_rate(from_currency: str,
@@ -93,13 +94,14 @@ def get_conversion_rate(from_currency: str,
         data = response.json()
         rate = data.get("result")
         result = round(float(rate), 2)
-        logger.info(f"Успешная конвертация: {amount} {from_currency} → {result} {to_currency}")
+        logger.info(f"Успешная конвертация: "
+                    f"{amount} {from_currency} → {result} {to_currency}")
         return result
     else:
         logger.error(
             f"Ошибка при получении данных от API конвертации: "
             f"статус {response.status_code}, ответ: {response.text}")
-        return None # ДОБАВЛЯЛА ЛОГИРОВАНИЕ ПРОВЕРЬ РАБОТУ
+        return None
 
 
 def get_currency_rates(curr_list: list[str]) -> list[dict]:
@@ -135,7 +137,7 @@ def get_stock_prices(stock: str) -> Optional[float]:
         logger.error(
             f"Ошибка при получении данных о акции {stock}: "
             f"статус {response.status_code}, ответ: {response.text}")
-        return None # ДОБАВЛЯЛА ЛОГИРОВАНИЕ ПРОВЕРЬ РАБОТУ
+        return None
     # stocks = ["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"]
 
 
