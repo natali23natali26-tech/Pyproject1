@@ -1,12 +1,12 @@
 import logging
 from pathlib import Path
 from datetime import datetime
-from utils import (get_greeting, get_currency_rates,
-                   get_stock_rate_list,
-                   read_transactions_from_excel,
-                   get_card_summary,
-                   get_top_transactions,
-                   filter_transactions)
+from src.utils import (get_greeting, get_currency_rates,
+                       get_stock_rate_list,
+                       read_transactions_from_excel,
+                       get_card_summary,
+                       get_top_transactions,
+                       filter_transactions)
 
 # Настраиваем логирование
 logger = logging.getLogger(__name__)
