@@ -124,7 +124,7 @@ def test_this_home_empty_transactions(mock_all):
     # Мокаем пустые данные
     mock_all["read"].return_value = []
     mock_all["filter"].return_value = []
-    mock_all["cards"].return_value = []  # 🔴 Вот это было пропущено!
+    mock_all["cards"].return_value = []
     mock_all["top"].return_value = []
 
     result = this_home()
